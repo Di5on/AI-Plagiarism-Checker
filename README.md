@@ -79,7 +79,7 @@ AI-Plagiarism-Checker/
 ### 1. Clone the Repository
 
 ```bash id="setup1"
-git clone https://github.com/YOUR_USERNAME/AI-Plagiarism-Checker.git
+git clone https://github.com/Di5on/AI-Plagiarism-Checker.git
 cd AI-Plagiarism-Checker
 ```
 
