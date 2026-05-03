@@ -223,24 +223,23 @@ Returns:
 
 ## Screenshots
 
-> Add screenshots in a folder named `screenshots/` and reference them below.
 
 ### 1. Main Interface
 
 ```md id="img1"
-![Main UI](screenshots/main_ui.png)
+![Main UI](/screenshots/main_ui.png)
 ```
 
 ### 2. Similarity Results
 
 ```md id="img2"
-![Results](screenshots/Similarity_score.png)
+![Results](/screenshots/Similarity_score.png)
 ```
 
 ### 3. Highlighted Text Output
 
 ```md id="img3"
-![Highlight](screenshots/highlight.png)
+![Highlight](/screenshots/highlights.png)
 ```
 
 ---
@@ -248,7 +247,9 @@ Returns:
 ### 4. Highlighted Percentages Output
 
 ```md id="img4"
-![Highlight Percentages](screenshots/highlights_percentage.png)
+![Highlight Percentages](/screenshots/highlights_percentage.png)
+
+---
 
 ## Technologies Used
 
