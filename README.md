@@ -221,7 +221,7 @@ Returns:
 
 ---
 
-```md
+
 ## Screenshots
 
 ### 1. Main Interface
@@ -241,7 +241,7 @@ Returns:
 ### 4. Highlighted Percentages Output
 
 ![Highlight Percentages](screenshots/highlights_percentage.png)
-```
+
 
 
 ---
