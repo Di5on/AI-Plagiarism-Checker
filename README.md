@@ -227,7 +227,7 @@ Returns:
 ### 1. Main Interface
 
 ```md id="img1"
-![Main UI](/screenshots/main_ui.png)
+![Main UI](https://github.com/Di5on/AI-Plagiarism-Checker/blob/main/screenshots/main_ui.png?raw=true)
 ```
 
 ### 2. Similarity Results
