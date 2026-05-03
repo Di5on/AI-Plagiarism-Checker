@@ -226,9 +226,9 @@ Returns:
 
 ### 1. Main Interface
 
-```md id="img1"
+
 ![Main UI](/screenshots/main_ui.png)
-```
+
 
 ### 2. Similarity Results
 
@@ -242,6 +242,7 @@ Returns:
 
 ![Highlight Percentages](screenshots/highlights_percentage.png)
 ```
+
 
 ---
 
@@ -276,8 +277,3 @@ Returns:
 * Optimize performance
 
 ---
-
-## Author
-
-Your Name
-https://github.com/YOUR_USERNAME
