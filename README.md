@@ -226,7 +226,9 @@ Returns:
 
 ### 1. Main Interface
 
-![Main UI](screenshots/main_ui.png)
+```md id="img1"
+![Main UI](/screenshots/main_ui.png)
+```
 
 ### 2. Similarity Results
 
