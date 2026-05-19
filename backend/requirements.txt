@@ -1,9 +1,10 @@
 fastapi
 uvicorn
+streamlit
 python-multipart
+requests
+beautifulsoup4
 scikit-learn
 sentence-transformers
-numpy
-pandas
-pdfplumber
 python-docx
+PyMuPDF

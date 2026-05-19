@@ -1,25 +1,30 @@
 # AI Plagiarism Checker
 
-An end-to-end plagiarism detection system that analyzes uploaded documents or text inputs, compares them against a reference dataset, and identifies similarity using NLP techniques such as TF-IDF and Sentence Transformers.
+A local source-library plagiarism checker that analyzes uploaded documents or pasted text, compares them against stored source documents, and highlights matched passages with weighted similarity scoring.
 
 ---
 
 ## Project Overview
 
-This project allows users to upload assignments or paste text and compare it against a dataset of reference documents. It calculates similarity scores, detects paraphrased content, and highlights matched sentences using a combination of statistical and semantic NLP techniques.
+This prototype demonstrates plagiarism detection over a controlled local database of source documents. It does not claim internet-wide coverage. Instead, it proves the core detection workflow: ingest sources, extract text, compare submissions, classify match types, calculate similarity coverage, and highlight matched text.
 
 ---
 
 ## Features
 
-* Upload `.txt`, `.pdf`, and `.docx` files
+* Upload `.txt`, `.pdf`, and `.docx` submissions
 * Paste text directly for checking
-* Compare against a reference dataset (20–50 documents)
-* TF-IDF and Sentence Transformer-based similarity
-* Cosine similarity scoring
-* Sentence-level matching
-* Paraphrase detection (semantic similarity)
-* Highlighted text output
+* Compare against local source documents from `backend/source_library/`
+* Build `backend/data/sources.json` from stored source files
+* Exact normalized matching for direct copied text
+* Fuzzy matching for lightly edited or PDF-extraction differences
+* TF-IDF and Sentence Transformer semantic matching
+* Sentence-level match reporting
+* Color-coded highlighting:
+  * Red: direct match
+  * Orange: near-exact or lightly edited
+  * Yellow: paraphrased or semantic match
+  * Blue: moderate similarity
 * FastAPI backend with REST API
 * Streamlit frontend
 
@@ -27,222 +32,198 @@ This project allows users to upload assignments or paste text and compare it aga
 
 ## How It Works
 
-```id="flow1"
-User Input (File / Text)
-        ↓
-Text Parsing (.txt / .pdf / .docx)
-        ↓
-Text Cleaning + Sentence Splitting
-        ↓
-TF-IDF Vectorization
-        ↓
-Sentence Transformer Embeddings
-        ↓
-Cosine Similarity
-        ↓
-Match Classification
-        ↓
-Results + Highlighted Output
+```text
+Local Source Files (.pdf / .txt / .docx)
+        |
+Extract Text
+        |
+Save backend/data/sources.json
+        |
+User Submission (File / Text)
+        |
+Sentence Splitting
+        |
+Exact + Fuzzy + TF-IDF + Semantic Matching
+        |
+Coverage-Based Similarity Score
+        |
+Results + Colored Highlights
 ```
 
 ---
 
 ## Project Structure
 
-```id="struct1"
+```text
 AI-Plagiarism-Checker/
-│
-├── backend/
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── parser.py
-│   │   ├── similarity.py
-│   │   ├── database.py
-│   │   └── schemas.py
-│   │
-│   ├── reference_docs/
-│   └── requirements.txt
-│
-├── frontend/
-│   ├── app.py
-│   └── requirements.txt
-│
-├── README.md
-├── .gitignore
-└── venv/
+|
+|-- backend/
+|   |-- app/
+|   |   |-- main.py
+|   |   |-- parser.py
+|   |   |-- similarity.py
+|   |   |-- source_library.py
+|   |   |-- local_checker.py
+|   |   |-- build_sources.py
+|   |
+|   |-- source_library/
+|   |-- data/
+|   |   |-- sources.json
+|   |-- requirements.txt
+|
+|-- frontend/
+|   |-- app.py
+|   |-- requirements.txt
+|
+|-- README.md
+|-- .gitignore
 ```
 
 ---
 
-## Setup Instructions
+## Setup
 
-### 1. Clone the Repository
+### 1. Create Virtual Environment
 
-```bash id="setup1"
-git clone https://github.com/Di5on/AI-Plagiarism-Checker.git
-cd AI-Plagiarism-Checker
-```
-
----
-
-### 2. Create Virtual Environment
-
-```bash id="setup2"
+```bash
 python -m venv venv
 ```
 
-Activate:
+Activate on Windows:
 
-Windows:
-
-```bash id="setup3"
+```bash
 venv\Scripts\activate
 ```
 
-Mac/Linux:
+If PowerShell blocks activation, use the venv Python directly:
 
-```bash id="setup4"
-source venv/bin/activate
+```powershell
+.\venv\Scripts\python.exe -m pip install -r .\backend\requirements.txt
 ```
 
----
+### 2. Install Dependencies
 
-### 3. Install Dependencies
-
-```bash id="setup5"
+```bash
 pip install -r backend/requirements.txt
 pip install -r frontend/requirements.txt
 ```
 
+### 3. Add Source Documents
+
+Put trusted source files here:
+
+```text
+backend/source_library/
+```
+
+Supported formats:
+
+```text
+.pdf
+.txt
+.docx
+```
+
+### 4. Build Local Source Database
+
+```bash
+cd backend
+python -m app.build_sources
+```
+
+This creates or updates:
+
+```text
+backend/data/sources.json
+```
+
 ---
 
-## Running the Application
+## Running The Application
 
-### Start Backend (FastAPI)
+### Start Backend
 
-```bash id="run1"
+```bash
 cd backend
-uvicorn app.main:app --reload
-```
-
-The backend runs locally at:
-
-```id="run2"
-http://127.0.0.1:<PORT>
-```
-
-You can specify a port manually:
-
-```bash id="run3"
 uvicorn app.main:app --reload --port 8000
 ```
 
-API Docs:
+Or without activating the venv:
 
-```id="run4"
-http://127.0.0.1:<PORT>/docs
+```powershell
+cd backend
+..\venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
 ```
 
----
+API docs:
 
-### Start Frontend (Streamlit)
+```text
+http://127.0.0.1:8000/docs
+```
 
-```bash id="run5"
+### Start Frontend
+
+```bash
 cd frontend
 streamlit run app.py
 ```
 
-Frontend runs at:
+Or without activating the venv:
 
-```id="run6"
-http://localhost:<PORT>
-```
-
----
-
-## Configuration
-
-Update the backend URL in `frontend/app.py` if needed:
-
-```python id="config1"
-API_URL = "http://127.0.0.1:8000"
-```
-
-Recommended:
-
-```python id="config2"
-import os
-API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
+```powershell
+.\venv\Scripts\python.exe -m streamlit run .\frontend\app.py
 ```
 
 ---
 
 ## API Endpoints
 
-### GET /sources
+### GET /
 
-Returns list of reference documents.
+Returns a basic health message.
 
-```json id="api1"
-{
-  "total_sources": 40,
-  "sources": ["essay1.txt", "essay2.txt"]
-}
-```
+### GET /local-sources
 
----
+Returns the sources currently loaded from `backend/data/sources.json`.
 
-### POST /check
+### POST /build-local-sources
+
+Rebuilds `backend/data/sources.json` from files in `backend/source_library/`.
+
+### POST /check-local
 
 Accepts:
 
-* File upload OR
+* File upload
 * Text input
 
 Returns:
 
-```json id="api2"
+```json
 {
-  "overall_similarity": 78.5,
-  "top_matches": [...],
-  "matched_sentences": [...],
+  "overall_similarity": 98.17,
+  "sources_checked": 5,
+  "sources_with_comparison_text": 5,
+  "total_sentence_matches": 3,
+  "matches": [],
   "highlighted_text": "<html>"
 }
 ```
 
 ---
 
-## Output Explanation
+## Scoring
 
-* **Overall Similarity**: Highest similarity score detected
-* **Top Matches**: Most similar reference documents
-* **Matched Sentences**: Sentence-level comparisons
-* **Highlighted Text**: Visual marking of similar content
+The score is based on how much of the submitted text is covered by strong matches.
 
----
+Matching layers:
 
+* **Exact normalized match**: catches direct copied text even if punctuation, casing, or spacing changes.
+* **Fuzzy match**: catches lightly edited text and PDF extraction differences.
+* **TF-IDF match**: catches strong keyword and phrase overlap.
+* **Semantic match**: catches paraphrased text when the Sentence Transformer model is available.
 
-## Screenshots
-
-### 1. Main Interface
-
-
-![Main UI](/screenshots/main_ui.png)
-
-
-### 2. Similarity Results
-
-![Results](screenshots/Similarity_score.png)
-
-### 3. Highlighted Text Output
-
-![Highlight](screenshots/highlights.png)
-
-### 4. Highlighted Percentages Output
-
-![Highlight Percentages](screenshots/highlights_percentage.png)
-
-
+The app tries to load `all-MiniLM-L6-v2`. If the model is unavailable, it still works with exact, fuzzy, and TF-IDF matching.
 
 ---
 
@@ -251,29 +232,26 @@ Returns:
 * Python
 * FastAPI
 * Streamlit
-* Scikit-learn (TF-IDF)
+* Scikit-learn
 * Sentence Transformers
-* NumPy
-* pdfplumber
+* PyMuPDF
 * python-docx
 
 ---
 
 ## Limitations
 
-* Limited dataset size
-* No internet-wide plagiarism detection
-* Accuracy depends on dataset quality
-* Basic sentence segmentation
+* Checks only sources stored in the local source library.
+* Accuracy depends on source quality and PDF text extraction quality.
+* Basic sentence segmentation.
+* Semantic paraphrase detection depends on the Hugging Face model being available locally or downloadable.
 
 ---
 
 ## Future Improvements
 
-* Use vector databases (FAISS, Chroma)
-* Export plagiarism reports (PDF)
-* Improve UI and highlighting
-* Expand dataset size
-* Optimize performance
-
----
+* Add source upload/import from the frontend.
+* Store sources in SQLite instead of JSON.
+* Add FAISS or Chroma vector indexing for larger libraries.
+* Export similarity reports as PDF.
+* Add quote/reference exclusion controls.

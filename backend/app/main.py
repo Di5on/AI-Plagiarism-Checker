@@ -1,14 +1,16 @@
-import os
-import shutil
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.parser import extract_text
-from app.database import load_reference_documents, get_source_names
-from app.similarity import plagiarism_score
+from app.parser import extract_text_from_file
+from app.local_checker import check_local_plagiarism
+from app.source_library import build_source_library, load_source_library
 
 
-app = FastAPI(title="AI Plagiarism Checker API")
+app = FastAPI(
+    title="AI Plagiarism Checker",
+    description="Local source library plagiarism checker using weighted NLP similarity.",
+    version="1.0.0"
+)
 
 
 app.add_middleware(
@@ -20,59 +22,69 @@ app.add_middleware(
 )
 
 
-UPLOAD_FOLDER = "uploads"
-
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
-
 @app.get("/")
 def home():
     return {
-        "message": "AI Plagiarism Checker API is running"
+        "message": "AI Plagiarism Checker API is running."
     }
 
 
-@app.get("/sources")
-def get_sources():
-    sources = get_source_names()
+@app.get("/local-sources")
+def local_sources():
+    sources = load_source_library()
 
     return {
         "total_sources": len(sources),
-        "sources": sources
+        "sources": [
+            {
+                "filename": source.get("filename", ""),
+                "title": source.get("title", ""),
+                "word_count": source.get("word_count", 0),
+            }
+            for source in sources
+        ],
     }
 
 
-@app.post("/check")
-async def check_plagiarism(
-    file: UploadFile = File(None),
-    text: str = Form(None)
+@app.post("/build-local-sources")
+def build_local_sources():
+    sources = build_source_library()
+
+    return {
+        "total_sources": len(sources),
+        "sources": [
+            {
+                "filename": source.get("filename", ""),
+                "title": source.get("title", ""),
+                "word_count": source.get("word_count", 0),
+            }
+            for source in sources
+        ],
+    }
+
+
+@app.post("/check-local")
+async def check_local(
+    text: str = Form(None),
+    file: UploadFile = File(None)
 ):
-    uploaded_text = ""
-
     if file:
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        uploaded_text = extract_text(file_path)
+        user_text = await extract_text_from_file(file)
 
     elif text:
-        uploaded_text = text
+        user_text = text
 
     else:
         return {
             "error": "Please upload a file or enter text."
         }
 
-    reference_docs = load_reference_documents()
-
-    if not reference_docs:
+    if not user_text.strip():
         return {
-            "error": "No reference documents found."
+            "error": "No readable text found."
         }
 
-    result = plagiarism_score(uploaded_text, reference_docs)
+    result = check_local_plagiarism(user_text)
 
     return result
+

@@ -1,46 +1,36 @@
-import os
-import pdfplumber
+import fitz
 import docx
 
 
-def extract_text_from_txt(file_path: str) -> str:
-    with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
-        return file.read()
+async def extract_text_from_file(file):
+    filename = file.filename.lower()
+    content = await file.read()
 
+    if filename.endswith(".txt"):
+        return content.decode("utf-8", errors="ignore")
 
-def extract_text_from_pdf(file_path: str) -> str:
-    text = ""
+    elif filename.endswith(".pdf"):
+        text = ""
+        pdf = fitz.open(stream=content, filetype="pdf")
 
-    with pdfplumber.open(file_path) as pdf:
-        for page in pdf.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
+        for page in pdf:
+            text += page.get_text()
 
-    return text
+        return text
 
+    elif filename.endswith(".docx"):
+        temp_path = "temp_uploaded.docx"
 
-def extract_text_from_docx(file_path: str) -> str:
-    document = docx.Document(file_path)
-    text = ""
+        with open(temp_path, "wb") as f:
+            f.write(content)
 
-    for paragraph in document.paragraphs:
-        text += paragraph.text + "\n"
+        document = docx.Document(temp_path)
 
-    return text
+        text = ""
+        for paragraph in document.paragraphs:
+            text += paragraph.text + "\n"
 
-
-def extract_text(file_path: str) -> str:
-    extension = os.path.splitext(file_path)[1].lower()
-
-    if extension == ".txt":
-        return extract_text_from_txt(file_path)
-
-    elif extension == ".pdf":
-        return extract_text_from_pdf(file_path)
-
-    elif extension == ".docx":
-        return extract_text_from_docx(file_path)
+        return text
 
     else:
-        raise ValueError("Unsupported file type. Only .txt, .pdf, and .docx are allowed.")
+        return ""

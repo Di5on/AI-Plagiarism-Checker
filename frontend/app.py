@@ -1,174 +1,377 @@
 import streamlit as st
 import requests
+import html
+import streamlit.components.v1 as components
 
 
 API_URL = "http://127.0.0.1:8000"
 
 
+def safe_html(text):
+    if text is None:
+        return ""
+    return html.escape(str(text)).replace("\n", "<br>")
+
+
+def render_html_box(content, height=300):
+    components.html(
+        content,
+        height=height,
+        scrolling=True
+    )
+
+
 st.set_page_config(
     page_title="AI Plagiarism Checker",
-    page_icon="📝",
+    page_icon="📄",
     layout="wide"
 )
 
 
-st.title("📝 AI Plagiarism Checker")
-st.write("Upload an assignment or paste text to check similarity against reference documents.")
+st.title("AI Plagiarism Checker")
 
-
-st.sidebar.header("Reference Sources")
-
-try:
-    sources_response = requests.get(f"{API_URL}/sources")
-
-    if sources_response.status_code == 200:
-        sources_data = sources_response.json()
-        st.sidebar.write(f"Total Sources: {sources_data['total_sources']}")
-
-        for source in sources_data["sources"]:
-            st.sidebar.write(f"- {source}")
-    else:
-        st.sidebar.error("Could not load sources.")
-
-except Exception:
-    st.sidebar.error("Backend is not running.")
-
-
-st.subheader("Upload Assignment File")
-
-uploaded_file = st.file_uploader(
-    "Choose a file",
-    type=["txt", "pdf", "docx"]
+st.write(
+    "Check uploaded documents or pasted text against the local source library."
 )
 
 
-st.subheader("Or Paste Text Directly")
-
-text_input = st.text_area(
-    "Paste assignment text here",
-    height=250
+st.sidebar.title("About")
+st.sidebar.write(
+    "This app uses FastAPI, Streamlit, local sources, TF-IDF, fuzzy matching, and Sentence Transformers."
 )
+
+
+input_method = st.radio(
+    "Choose input method",
+    ["Paste Text", "Upload File"]
+)
+
+
+user_text = ""
+uploaded_file = None
+
+
+if input_method == "Paste Text":
+    user_text = st.text_area(
+        "Paste your text here",
+        height=300
+    )
+else:
+    uploaded_file = st.file_uploader(
+        "Upload a file",
+        type=["txt", "pdf", "docx"]
+    )
 
 
 if st.button("Check Plagiarism"):
-    if uploaded_file is None and text_input.strip() == "":
-        st.warning("Please upload a file or enter text.")
+
+    if input_method == "Paste Text" and not user_text.strip():
+        st.error("Please enter some text first.")
+
+    elif input_method == "Upload File" and uploaded_file is None:
+        st.error("Please upload a file first.")
 
     else:
-        with st.spinner("Checking similarity..."):
-            try:
-                files = None
-                data = {}
+        endpoint = "/check-local"
+        spinner_text = "Checking plagiarism using the local source library..."
 
+        with st.spinner(spinner_text):
+
+            try:
                 if uploaded_file is not None:
                     files = {
                         "file": (
                             uploaded_file.name,
-                            uploaded_file.getvalue(),
+                            uploaded_file,
                             uploaded_file.type
                         )
                     }
 
-                if text_input.strip():
-                    data["text"] = text_input
-
-                response = requests.post(
-                    f"{API_URL}/check",
-                    files=files,
-                    data=data
-                )
-
-                if response.status_code == 200:
-                    result = response.json()
-
-                    if "error" in result:
-                        st.error(result["error"])
-
-                    else:
-                        overall_score = result["overall_similarity"]
-
-                        st.subheader("Overall Similarity Score")
-                        st.progress(overall_score / 100)
-                        st.metric("Similarity", f"{overall_score}%")
-
-                        if overall_score >= 70:
-                            st.error("High similarity detected.")
-                        elif overall_score >= 40:
-                            st.warning("Moderate similarity detected.")
-                        else:
-                            st.success("Low similarity detected.")
-
-                        st.subheader("Top Matched Sources")
-
-                        for match in result["top_matches"]:
-                            with st.expander(
-                                f"{match['filename']} - {match['combined_similarity']}%"
-                            ):
-                                st.write(f"TF-IDF Similarity: {match['tfidf_similarity']}%")
-                                st.write(f"Embedding Similarity: {match['embedding_similarity']}%")
-                                st.write(f"Combined Similarity: {match['combined_similarity']}%")
-
-                        st.subheader("Highlighted Submitted Text")
-
-                        st.markdown(
-                            """
-                            <div style="margin-bottom:10px;">
-                                <span style="background-color:#ffb3b3; padding:4px; border-radius:4px;">Direct Similarity</span>
-                                <span style="background-color:#fff3b0; padding:4px; border-radius:4px;">Possible Paraphrase</span>
-                                <span style="background-color:#cce5ff; padding:4px; border-radius:4px;">Moderate Similarity</span>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-
-                        highlighted_text = result.get("highlighted_text", "")
-
-                        st.markdown(
-                            f"""
-                            <div style="
-                                border:1px solid #ddd;
-                                border-radius:8px;
-                                padding:15px;
-                                line-height:1.8;
-                                background-color:#fafafa;
-                                color:#000000;
-                            ">
-                                {highlighted_text}
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-
-                        st.subheader("Matched Sentences / Phrases")
-
-                        if result["matched_sentences"]:
-                            for sentence_match in result["matched_sentences"]:
-                                st.markdown("---")
-
-                                match_type = sentence_match.get("match_type", "Similarity Match")
-                                similarity = sentence_match["similarity"]
-
-                                if match_type == "Direct Similarity":
-                                    st.error(f"{match_type} — {similarity}%")
-                                elif match_type == "Possible Paraphrase":
-                                    st.warning(f"{match_type} — {similarity}%")
-                                elif match_type == "Moderate Similarity":
-                                    st.info(f"{match_type} — {similarity}%")
-                                else:
-                                    st.write(f"{match_type} — {similarity}%")
-
-                                st.write(f"Source: **{sentence_match['source']}**")
-
-                                st.markdown("Submitted Sentence:")
-                                st.warning(sentence_match["uploaded_sentence"])
-
-                                st.markdown("Matched Reference Sentence:")
-                                st.info(sentence_match["matched_sentence"])
-                        else:
-                            st.write("No strong sentence-level matches found.")
+                    response = requests.post(
+                        f"{API_URL}{endpoint}",
+                        files=files
+                    )
 
                 else:
-                    st.error("Something went wrong with the backend request.")
+                    data = {
+                        "text": user_text
+                    }
 
-            except Exception as e:
-                st.error(f"Error: {e}")
+                    response = requests.post(
+                        f"{API_URL}{endpoint}",
+                        data=data
+                    )
+
+                result = response.json()
+
+                if "error" in result:
+                    st.error(result["error"])
+
+                else:
+                    st.subheader("Overall Similarity")
+
+                    st.metric(
+                        label="Similarity Score",
+                        value=f"{result.get('overall_similarity', 0)}%"
+                    )
+
+                    st.write(
+                        f"Sources checked: {result.get('sources_checked', 0)}"
+                    )
+                    st.write(
+                        "Sources with text:",
+                        result.get("sources_with_comparison_text", 0)
+                    )
+                    st.write(
+                        "Sentence matches:",
+                        result.get("total_sentence_matches", 0)
+                    )
+                    if result.get("pdf_check_enabled"):
+                        st.write(
+                            "PDFs checked:",
+                            result.get("pdfs_checked", 0)
+                        )
+
+                    model_status = result.get("model_status", {})
+
+                    if model_status:
+                        if model_status.get("available"):
+                            st.success(
+                                f"Semantic model active: {model_status.get('model_name')}"
+                            )
+                        else:
+                            st.warning(
+                                "Semantic model unavailable. "
+                                "Using exact, fuzzy, and TF-IDF matching only."
+                            )
+
+                    st.subheader("Highlighted Submitted Text")
+
+                    st.markdown(
+                        """
+                        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                            <span style="background:#ff8a80; padding:5px 8px; border-radius:4px;">Direct Match</span>
+                            <span style="background:#ffcc80; padding:5px 8px; border-radius:4px;">Near-Exact / Lightly Edited</span>
+                            <span style="background:#fff176; padding:5px 8px; border-radius:4px;">Paraphrased / Semantic</span>
+                            <span style="background:#bbdefb; padding:5px 8px; border-radius:4px;">Moderate Similarity</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+                    highlighted_text = result.get("highlighted_text", "")
+
+                    if highlighted_text:
+                        highlighted_box = f"""
+                        <html>
+                        <head>
+                            <style>
+                                body {{
+                                    font-family: Arial, sans-serif;
+                                    background-color: #f8f9fa;
+                                    color: #111;
+                                    line-height: 1.8;
+                                    padding: 18px;
+                                    border-radius: 10px;
+                                    border: 1px solid #ddd;
+                                }}
+
+                                mark {{
+                                    background-color: #fff176;
+                                    padding: 3px 5px;
+                                    border-radius: 4px;
+                                    font-weight: bold;
+                                }}
+                            </style>
+                        </head>
+                        <body>
+                            {highlighted_text}
+                        </body>
+                        </html>
+                        """
+
+                        render_html_box(highlighted_box, height=350)
+
+                    else:
+                        st.info("No highlighted text available.")
+
+                    st.subheader("Matched Sources")
+
+                    matches = result.get("matches", [])
+
+                    if not matches:
+                        st.info("No matches found.")
+
+                    for match in matches:
+
+                        st.markdown(f"## {match.get('title', 'No title')}")
+
+                        st.write(
+                            "**Similarity:**",
+                            f"{match.get('similarity', 0)}%"
+                        )
+
+                        st.write(
+                            "**Matched Against:**",
+                            match.get("matched_against", "")
+                        )
+
+                        st.write(
+                            "**Authors:**",
+                            ", ".join(match.get("authors", []))
+                            if match.get("authors")
+                            else "Not available"
+                        )
+
+                        st.write(
+                            "**Journal:**",
+                            match.get("journal", "Not available")
+                        )
+
+                        st.write(
+                            "**Type:**",
+                            match.get("type", "Not available")
+                        )
+
+                        st.write(
+                            "**DOI:**",
+                            match.get("doi", "Not available")
+                        )
+
+                        if match.get("filename"):
+                            st.write(
+                                "**Filename:**",
+                                match.get("filename")
+                            )
+
+                        if match.get("url"):
+                            st.markdown(
+                                f"[Open Source]({match.get('url')})"
+                            )
+
+                        matched_sentences = match.get("matched_sentences", [])
+
+                        if matched_sentences:
+                            st.markdown("### Sentence-Level Matches")
+
+                            for sentence_match in matched_sentences:
+
+                                user_sentence = safe_html(
+                                    sentence_match.get("user_sentence", "")
+                                )
+
+                                source_sentence = safe_html(
+                                    sentence_match.get("source_sentence", "")
+                                )
+
+                                similarity = sentence_match.get(
+                                    "weighted_similarity",
+                                    0
+                                )
+                                raw_similarity = sentence_match.get(
+                                    "similarity",
+                                    0
+                                )
+                                source_field = sentence_match.get(
+                                    "source_field",
+                                    "source"
+                                )
+                                match_type = safe_html(
+                                    sentence_match.get(
+                                        "match_type",
+                                        "Similarity Match"
+                                    )
+                                )
+                                fuzzy_similarity = sentence_match.get(
+                                    "fuzzy_similarity",
+                                    0
+                                )
+                                lexical_overlap = sentence_match.get(
+                                    "lexical_overlap",
+                                    0
+                                )
+                                card_color = sentence_match.get(
+                                    "highlight_color",
+                                    "#fff3cd"
+                                )
+                                border_color = sentence_match.get(
+                                    "border_color",
+                                    "#ffc107"
+                                )
+
+                                html_content = f"""
+                                <html>
+                                <head>
+                                    <style>
+                                        body {{
+                                            font-family: Arial, sans-serif;
+                                            background-color: {card_color};
+                                            padding: 14px;
+                                            border-radius: 8px;
+                                            border-left: 5px solid {border_color};
+                                            color: #111;
+                                            line-height: 1.7;
+                                        }}
+
+                                        .label {{
+                                            font-weight: bold;
+                                            margin-bottom: 5px;
+                                        }}
+
+                                        .section {{
+                                            margin-bottom: 15px;
+                                        }}
+                                    </style>
+                                </head>
+
+                                <body>
+                                    <div class="section">
+                                        <div class="label">Match type:</div>
+                                        <div>{match_type}</div>
+                                    </div>
+
+                                    <div class="section">
+                                        <div class="label">Your text:</div>
+                                        <div>{user_sentence}</div>
+                                    </div>
+
+                                    <div class="section">
+                                        <div class="label">Matched source text:</div>
+                                        <div>{source_sentence}</div>
+                                    </div>
+
+                                    <div class="section">
+                                        <div class="label">Weighted Similarity:</div>
+                                        <div>{similarity}% from {source_field}</div>
+                                    </div>
+
+                                    <div class="section">
+                                        <div class="label">Raw Sentence Similarity:</div>
+                                        <div>{raw_similarity}%</div>
+                                    </div>
+
+                                    <div class="section">
+                                        <div class="label">Fuzzy / Word Overlap:</div>
+                                        <div>{fuzzy_similarity}% / {lexical_overlap}%</div>
+                                    </div>
+                                </body>
+                                </html>
+                                """
+
+                                render_html_box(html_content, height=260)
+
+                        else:
+                            st.info(
+                                "No strong sentence-level matches found for this source."
+                            )
+
+                        st.divider()
+
+            except requests.exceptions.ConnectionError:
+                st.error(
+                    "Could not connect to the FastAPI backend. "
+                    "Make sure it is running with: uvicorn app.main:app --reload"
+                )
+
+            except Exception as error:
+                st.error(f"Something went wrong: {error}")
